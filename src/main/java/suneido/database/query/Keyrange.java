@@ -4,11 +4,11 @@
 
 package suneido.database.query;
 
-import static suneido.Suneido.dbpkg;
-import suneido.intfc.database.Record;
-
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
+
+import suneido.database.immudb.Dbpkg;
+import suneido.database.immudb.Record;
 
 public class Keyrange {
 	Record org;
@@ -41,14 +41,14 @@ public class Keyrange {
 	}
 
 	public Keyrange setAll() {
-		org = dbpkg.minRecord();
-		end = dbpkg.maxRecord();
+		org = Dbpkg.MIN_RECORD;
+		end = Dbpkg.MAX_RECORD;
 		return this;
 	}
 
 	public Keyrange setNone() {
-		org = dbpkg.maxRecord();
-		end = dbpkg.minRecord();
+		org = Dbpkg.MAX_RECORD;
+		end = Dbpkg.MIN_RECORD;
 		return this;
 	}
 

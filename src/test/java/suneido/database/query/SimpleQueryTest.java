@@ -12,8 +12,8 @@ import org.junit.Test;
 
 import suneido.database.query.Query.Dir;
 import suneido.database.server.ServerData;
-import suneido.intfc.database.Record;
-import suneido.intfc.database.Transaction;
+import suneido.database.immudb.Record;
+import suneido.database.immudb.Transaction;
 
 public class SimpleQueryTest extends TestBase {
 	private final Transaction t;

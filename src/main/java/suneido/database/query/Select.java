@@ -6,15 +6,14 @@ package suneido.database.query;
 
 import static java.util.Arrays.asList;
 import static suneido.SuInternalError.unreachable;
-import static suneido.Suneido.dbpkg;
 import static suneido.Trace.trace;
 import static suneido.Trace.tracing;
 import static suneido.Trace.Type.SELECT;
 import static suneido.Trace.Type.SLOWQUERY;
 import static suneido.compiler.Token.IS;
 import static suneido.compiler.Token.ISNT;
-import static suneido.intfc.database.Record.MAX_FIELD;
-import static suneido.intfc.database.Record.MIN_FIELD;
+import static suneido.database.immudb.Record.MAX_FIELD;
+import static suneido.database.immudb.Record.MIN_FIELD;
 import static suneido.util.ByteBuffers.bufferUcompare;
 import static suneido.util.Util.*;
 import static suneido.util.Verify.verify;
@@ -29,11 +28,12 @@ import com.google.common.collect.ImmutableSet;
 import gnu.trove.set.hash.TIntHashSet;
 import suneido.SuException;
 import suneido.compiler.Token;
+import suneido.database.immudb.Dbpkg;
+import suneido.database.immudb.Record;
+import suneido.database.immudb.RecordBuilder;
+import suneido.database.immudb.Transaction;
 import suneido.database.query.expr.*;
 import suneido.database.server.DbmsTranLocal;
-import suneido.intfc.database.Record;
-import suneido.intfc.database.RecordBuilder;
-import suneido.intfc.database.Transaction;
 import suneido.runtime.Ops;
 import suneido.runtime.Pack;
 import suneido.util.ByteBuffers;
@@ -561,8 +561,8 @@ public class Select extends Query1 {
 		// now build the key
 		int i = 0;
 		int n = index.size();
-		RecordBuilder org = dbpkg.recordBuilder();
-		RecordBuilder end = dbpkg.recordBuilder();
+		RecordBuilder org = new RecordBuilder();
+		RecordBuilder end = new RecordBuilder();
 		for (int iseli = 0; iseli < iselects.size(); ++iseli, ++i) {
 			Iselect isel = iselects.get(iseli);
 			verify(! isel.none());
@@ -751,8 +751,8 @@ public class Select extends Query1 {
 		// now build the keys
 		int i = 0;
 		int n = index.size();
-		RecordBuilder org = dbpkg.recordBuilder();
-		RecordBuilder end = dbpkg.recordBuilder();
+		RecordBuilder org = new RecordBuilder();
+		RecordBuilder end = new RecordBuilder();
 		if (nil(iselects))
 			end.addMax();
 		for (int iseli = 0; iseli < iselects.size(); ++iseli) {
@@ -841,12 +841,12 @@ public class Select extends Query1 {
 
 	private void convert_select(List<String> index, Record from, Record to) {
 		// PERF: could optimize for case where from == to
-		if (from.equals(dbpkg.minRecord()) && to.equals(dbpkg.maxRecord())) {
+		if (from.equals(Dbpkg.MIN_RECORD) && to.equals(Dbpkg.MAX_RECORD)) {
 			sel.setAll();
 			return ;
 		}
-		RecordBuilder newfrom = dbpkg.recordBuilder();
-		RecordBuilder newto = dbpkg.recordBuilder();
+		RecordBuilder newfrom = new RecordBuilder();
+		RecordBuilder newto = new RecordBuilder();
 		int si = 0; // source_index;
 		int ri = 0; // index;
 		Object fixval;

@@ -13,10 +13,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import suneido.compiler.Compiler;
+import com.google.common.primitives.Booleans;
+
+import suneido.compiler.CompileTest;
 import suneido.compiler.ExecuteTest;
 import suneido.compiler.Lexer;
 import suneido.compiler.Token;
+import suneido.runtime.OpsTest;
 import suneido.util.DnumTest;
 import suneido.util.RegexTest;
 import suneido.util.TrTest;
@@ -64,15 +67,17 @@ public class PortTests {
 		} catch (Throwable e) {
 			throw new RuntimeException("PortTests can't get " + TestDir.path + file);
 		}
-		System.out.println(file);
-		return new Parser(src).run();
+		return new Parser(file, src).run();
 	}
 
 	private static class Parser {
+		String filename;
 		Lexer lxr;
 		Token tok;
+		String comment;
 
-		Parser(String src) {
+		Parser(String filename, String src) {
+			this.filename = filename;
 			lxr = new Lexer(src);
 			next(true);
 		}
@@ -89,7 +94,7 @@ public class PortTests {
 			match(AT, false); // '@'
 			String name = lxr.getValue();
 			match(IDENTIFIER, true);
-			System.out.println(name + ":");
+			System.out.println(filename + ": " + name + ": " + comment);
 			Test test;
 			if (testmap.containsKey(name))
 				test = testmap.get(name);
@@ -101,6 +106,7 @@ public class PortTests {
 			boolean ok = true;
 			while (tok != EOF && tok != AT) {
 				List<String> args = new ArrayList<>();
+				List<Boolean> str = new ArrayList<>();
 				while (true) {
 					String text = lxr.getValue();
 					if (tok == SUB) {
@@ -108,6 +114,7 @@ public class PortTests {
 						text = "-" + lxr.getValue();
 					}
 					args.add(text);
+					str.add(tok == Token.STRING);
 					next(false);
 					if (tok == COMMA)
 						next(true);
@@ -115,7 +122,8 @@ public class PortTests {
 						break;
 				}
 				if (test == null) {
-				} else if (!test.run(args.toArray(new String[0]))) {
+				} else if (!test.run(Booleans.toArray(str),
+						args.toArray(new String[0]))) {
 					ok = false;
 					System.out.println("\tFAILED: " + args);
 				} else
@@ -130,19 +138,27 @@ public class PortTests {
 
 		void match(Token expected, boolean skip) {
 			if (tok != expected && lxr.getKeyword() != expected)
-				throw new RuntimeException("PortTests syntax error on " + lxr.getValue());
+				throw new RuntimeException("PortTests syntax error on " +
+						lxr.getValue());
 			next(skip);
 		}
 
 		void next(boolean skip) {
+			comment = "";
+			boolean nl = false;
 			while (true) {
-				tok = lxr.next();
+				tok = lxr.nextAll();
 				switch (tok) {
 				case NEWLINE:
 					if (!skip)
 						return;
+					nl = true;
 				case WHITE:
+					continue;
 				case COMMENT:
+					// capture trailing comment on same line
+					if (!nl)
+						comment = lxr.matched();
 					continue;
 				default:
 					return;
@@ -153,13 +169,37 @@ public class PortTests {
 
 	@FunctionalInterface
 	public interface Test {
+		boolean run(boolean[] str, String... args);
+	}
+
+	@FunctionalInterface
+	public interface Test2 {
 		boolean run(String... args);
+	}
+
+	static class Wrap implements Test {
+		Test2 test;
+		Wrap(Test2 test) {
+			this.test = test;
+		}
+		@Override
+		public boolean run(boolean[] str, String... args) {
+			return test.run(args);
+		}
 	}
 
 	private static HashMap<String, Test> testmap = new HashMap<>();
 
 	public static void addTest(String name, Test test) {
 		testmap.put(name, test);
+	}
+
+	public static void addTest(String name, Test2 test) {
+		testmap.put(name, new Wrap(test));
+	}
+
+	public static void skipTest(String name) {
+		testmap.put(name,  null);
 	}
 
 	public static void main(String[] args) {
@@ -172,9 +212,11 @@ public class PortTests {
 		addTest("dnum_div", DnumTest::pt_dnum_div);
 		addTest("dnum_cmp", DnumTest::pt_dnum_cmp);
 		addTest("execute", ExecuteTest::pt_execute);
+		addTest("method", ExecuteTest::pt_method);
 		addTest("lang_sub", ExecuteTest::pt_lang_sub);
 		addTest("lang_range", ExecuteTest::pt_lang_range);
-		addTest("constant", Compiler::pt_constant);
+		addTest("compile", CompileTest::pt_compile);
+		addTest("compare", OpsTest::pt_compare);
 
 		System.out.println("'" + TestDir.path + "'");
 		for (String filename : new File(TestDir.path).list())

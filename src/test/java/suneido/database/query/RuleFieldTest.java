@@ -6,12 +6,13 @@ package suneido.database.query;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static suneido.Suneido.dbpkg;
 
 import org.junit.Test;
 
-import suneido.intfc.database.Record;
-import suneido.intfc.database.Transaction;
+import suneido.database.immudb.Record;
+import suneido.database.immudb.RecordBuilder;
+import suneido.database.immudb.Table;
+import suneido.database.immudb.Transaction;
 
 public class RuleFieldTest extends TestBase {
 
@@ -24,7 +25,7 @@ public class RuleFieldTest extends TestBase {
 		adm("create withrule (a,B) key(a)");
 
 		Transaction t = db.readTransaction();
-		suneido.intfc.database.Table tbl = t.ck_getTable("withrule");
+		Table tbl = t.ck_getTable("withrule");
 		assertEquals("[b, a]", tbl.getColumns().toString());
 		t.complete();
 
@@ -40,9 +41,9 @@ public class RuleFieldTest extends TestBase {
 	@Test
 	public void misc() {
 		// rule fields are stored with a field number of -1
-		Record r = dbpkg.recordBuilder().add(-1).build();
+		Record r = new RecordBuilder().add(-1).build();
 		assertEquals(-1, r.getInt(0));
-		Record r2 = dbpkg.recordBuilder().add(0).build();
+		Record r2 = new RecordBuilder().add(0).build();
 		assertTrue(r.compareTo(r2) < 0);
 	}
 

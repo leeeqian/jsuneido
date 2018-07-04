@@ -4,8 +4,6 @@
 
 package suneido.database.server;
 
-import static suneido.Suneido.dbpkg;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -14,13 +12,10 @@ import com.google.common.base.CharMatcher;
 
 import suneido.*;
 import suneido.compiler.Compiler;
+import suneido.database.immudb.*;
 import suneido.database.query.CompileQuery;
 import suneido.database.query.Query.Dir;
 import suneido.database.query.Request;
-import suneido.intfc.database.Database;
-import suneido.intfc.database.Record;
-import suneido.intfc.database.Table;
-import suneido.intfc.database.Transaction;
 import suneido.runtime.builtin.ServerEval;
 import suneido.util.Errlog;
 
@@ -73,15 +68,15 @@ public class DbmsLocal extends Dbms {
 			String check = db.check();
 			if (! check.equals(""))
 				return check;
-			DbTools.dumpDatabase(dbpkg, db, "database.su");
+			DbTools.dumpDatabase(db, "database.su");
 		} else
-			DbTools.dumpTable(dbpkg, db, filename);
+			DbTools.dumpTable(db, filename);
 		return "";
 	}
 
 	@Override
 	public int load(String filename) {
-		return DbTools.loadTable(dbpkg, db, filename);
+		return DbTools.loadTable(db, filename);
 	}
 
 	@Override
@@ -103,7 +98,7 @@ public class DbmsLocal extends Dbms {
 	@Override
 	public List<LibGet> libget(String name) {
 		List<LibGet> srcs = new ArrayList<>();
-		Record key = dbpkg.recordBuilder().add(name).add(-1).build();
+		Record key = new RecordBuilder().add(name).add(-1).build();
 		Transaction tran = db.readTransaction();
 		try {
 			for (String lib : libraries) {
@@ -138,7 +133,7 @@ public class DbmsLocal extends Dbms {
 			get(Dir.NEXT, library + " project group, name, text", false);
 			admin("ensure " + library + " key(name,group)");
 		} catch (RuntimeException e) {
-			return false;
+			throw new SuException("Use failed: " + e);
 		}
 		libraries.add(library);
 		return true;

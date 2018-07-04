@@ -19,17 +19,16 @@ import java.util.Set;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
-import suneido.Suneido;
-import suneido.intfc.database.IndexIter;
-import suneido.intfc.database.Record;
-import suneido.intfc.database.RecordBuilder;
-import suneido.intfc.database.Transaction;
+import suneido.database.immudb.IndexIter;
+import suneido.database.immudb.Record;
+import suneido.database.immudb.RecordBuilder;
+import suneido.database.immudb.Transaction;
 import suneido.util.CommaStringBuilder;
 import suneido.util.Util;
 
 public class Table extends Query {
 	private final String table;
-	final suneido.intfc.database.Table tbl;
+	final suneido.database.immudb.Table tbl;
 	private boolean first = true;
 	private boolean rewound = true;
 	private final Keyrange sel = new Keyrange();
@@ -352,7 +351,7 @@ public class Table extends Query {
 
 		@Override
 		Record process(Record rec) {
-			RecordBuilder rb = Suneido.dbpkg.recordBuilder();
+			RecordBuilder rb = new RecordBuilder();
 			rb.addAll(rec);
 			for (int i = rec.size(); i < 6; ++i)
 				rb.add("");

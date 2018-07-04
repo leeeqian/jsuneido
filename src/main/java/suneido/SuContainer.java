@@ -4,11 +4,8 @@
 
 package suneido;
 
-import static suneido.Suneido.dbpkg;
-import static suneido.runtime.Numbers.toBigDecimal;
 import static suneido.util.Verify.verify;
 
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -16,14 +13,15 @@ import java.util.regex.Pattern;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
+import suneido.database.immudb.Record;
+import suneido.database.immudb.RecordBuilder;
 import suneido.database.query.Header;
-import suneido.intfc.database.Record;
-import suneido.intfc.database.RecordBuilder;
 import suneido.runtime.Ops;
 import suneido.runtime.Pack;
 import suneido.runtime.Range;
 import suneido.runtime.SuInstance;
 import suneido.runtime.builtin.ContainerMethods;
+import suneido.util.Dnum;
 import suneido.util.NullIterator;
 import suneido.util.PairStack;
 import suneido.util.Util;
@@ -180,10 +178,7 @@ public class SuContainer extends SuValue
 
 	@Override
 	public synchronized Object get(Object key) {
-		if (key instanceof Range)
-			return ((Range) key).sublist(this);
-		else
-			return getDefault(key, defval);
+		return getDefault(key, defval);
 	}
 
 	/**
@@ -260,6 +255,22 @@ public class SuContainer extends SuValue
 		return map.isEmpty() ? null : map.get(at);
 	}
 
+	@Override
+	public synchronized Object rangeTo(int i, int j) {
+		int size = vec.size();
+		int f = Range.prepFrom(i, size);
+		int t = Range.prepTo(f, j, size);
+		return subList(f, t);
+	}
+
+	@Override
+	public synchronized Object rangeLen(int i, int n) {
+		int size = vec.size();
+		int f = Range.prepFrom(i, size);
+		int t = f + Range.prepLen(n, size - f);
+		return subList(f, t);
+	}
+
 	public synchronized boolean containsKey(Object key) {
 		int i = index(key);
 		return (0 <= i && i < vec.size()) || map.containsKey(key);
@@ -300,14 +311,16 @@ public class SuContainer extends SuValue
 	@Override
 	public synchronized int hashCode() {
 		int h = hashCodeContrib();
-		if (! vec.isEmpty()) {
-			// The nice thing about vectors: they have a canonical ordering, so
-			// we know we can satisfy the hashCode() contract by just looking at
-			// an arbitrary number of elements.
+		// The nice thing about vectors: they have a canonical ordering, so
+		// we know we can satisfy the hashCode() contract by just looking at
+		// an arbitrary number of elements.
+		if (vec.size() > 0)
 			h = 31 * h + Ops.hashCodeContrib(vec.get(0));
-		} else if (map.size() <= 5) {
-			// The nasty thing about maps: no canonical ordering. If we want to
-			// look at any of the members, we have to look at all of them.
+		if (vec.size() > 1)
+			h = 31 * h + Ops.hashCodeContrib(vec.get(1));
+		if (map.size() <= 5) {
+			// The nasty thing about hash maps: no canonical ordering.
+			// If we look at any members, we have to look at all of them.
 			for (Map.Entry<Object, Object> entry : map.entrySet()) {
 				h = 31 * h + Ops.hashCodeContrib(entry.getKey())
 						^ Ops.hashCodeContrib(entry.getValue());
@@ -323,32 +336,23 @@ public class SuContainer extends SuValue
 	}
 
 	/**
-	 * convert to standardized types so lookup works consistently
-	 * Number is converted to Integer if within range, else BigDecimal
+	 * Convert to standardized types so lookup works consistently
+	 * Dnum is narrowed to Integer if in range
 	 * CharSequence (String, Concat, SuException) is converted to String
+	 * <p>
+	 * See also: index
 	 */
-	private static Object canonical(Object x) {
-		// must match index(x)
-		if (x instanceof Number) {
-			if (x instanceof Integer)
-				return x;
-			if (x instanceof Long) {
-				long i = (Long) x;
-				if (Integer.MIN_VALUE <= i && i <= Integer.MIN_VALUE)
-					return (int) i;
-			}
-			return canonicalBD(toBigDecimal(x));
-		}
+	static Object canonical(Object x) {
 		if (x instanceof CharSequence)
 			return x.toString();
-		return x;
-	}
-	private static Number canonicalBD(BigDecimal n) {
-		try {
-			return n.intValueExact();
-		} catch (ArithmeticException e) {
-			return n.stripTrailingZeros();
+		if (x instanceof Integer)
+			return x;
+		if (x instanceof Dnum) {
+			Object y = ((Dnum) x).intObject();
+			if (y != null)
+				return y;
 		}
+		return x;
 	}
 
 	@Override
@@ -449,32 +453,22 @@ public class SuContainer extends SuValue
 		return true;
 	}
 
-	public synchronized void clear() {
+	public synchronized void deleteAll() {
 		checkReadonly();
 		vec.clear();
 		map.clear();
 	}
 
 	/** @return The integer value of x, or -1 if the value is not an integer
-	 * so it will not be in range for the vector
+	 * so it will not be in range for the vector.
+	 * <p>
+	 * See also: canonical
 	 */
 	static int index(Object x) {
-		// must match the behavior of canonical
-		if (x instanceof Number) {
-			if (x instanceof Integer)
-				return (Integer) x;
-			else if (x instanceof Long) {
-				long i = (Long) x;
-				if (Integer.MIN_VALUE <= i && i <= Integer.MIN_VALUE)
-					return (int) i;
-			} else {
-		 		try {
-					return toBigDecimal(x).intValueExact();
-				} catch (ArithmeticException e) {
-					// ignore, fall through
-				}
-			}
-		}
+		if (x instanceof Integer)
+			return (int) x;
+		else if (x instanceof Dnum)
+			return ((Dnum) x).intOrMin();
 		return -1;
 	}
 
@@ -744,7 +738,7 @@ public class SuContainer extends SuValue
 	}
 
 	public synchronized Record toDbRecord(Header hdr) {
-		RecordBuilder rec = dbpkg.recordBuilder();
+		RecordBuilder rec = new RecordBuilder();
 		Object x;
 		String ts = hdr.timestamp_field();
 		Object tsval = null;

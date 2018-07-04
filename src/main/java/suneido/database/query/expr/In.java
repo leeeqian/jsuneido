@@ -4,42 +4,49 @@
 
 package suneido.database.query.expr;
 
-import static suneido.Suneido.dbpkg;
 import static suneido.util.Util.displayListToParens;
 
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
+
+import suneido.database.immudb.Record;
+import suneido.database.immudb.RecordBuilder;
 import suneido.database.query.Header;
 import suneido.database.query.Row;
-import suneido.intfc.database.Record;
-import suneido.intfc.database.RecordBuilder;
 import suneido.runtime.Ops;
 
 public class In extends Expr {
 	public final Expr expr;
-	private final List<Object> values;
+	private final Set<Object> values;
 	public final Record packed;
 	private boolean isTerm = false; // valid for isTermFields
 	private List<String> isTermFields = null;
 
 	public In(Expr expr, List<Object> values) {
-		this(expr, values, convert(values));
+		this.expr = expr;
+		this.values = toSet(values);
+		this.packed = convert(this.values);
 	}
 
-	private static Record convert(List<Object> values) {
-		if (values == null)
-			return dbpkg.minRecord();
-		RecordBuilder rb = dbpkg.recordBuilder();
+	private static Set<Object> toSet(List<Object> values) {
+		return (values == null)
+				? Collections.emptySet() : ImmutableSet.copyOf(values);
+	}
+
+	private static Record convert(Set<Object> values) {
+		RecordBuilder rb = new RecordBuilder();
 		for (Object value : values)
 			rb.add(value);
 		return rb.build();
 	}
 
-	private In(Expr expr, List<Object> values, Record packed) {
+	private In(Expr expr, Set<Object> values, Record packed) {
 		this.expr = expr;
-		this.values = (values == null) ? Collections.emptyList() : values;
+		this.values = values;
 		this.packed = packed;
 	}
 

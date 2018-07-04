@@ -4,7 +4,6 @@
 
 package suneido.database.query;
 
-import static suneido.Suneido.dbpkg;
 import static suneido.Trace.trace;
 import static suneido.Trace.tracing;
 import static suneido.Trace.Type.QUERYOPT;
@@ -19,9 +18,9 @@ import java.util.Set;
 import com.google.common.collect.ImmutableSet;
 
 import suneido.SuException;
-import suneido.intfc.database.Record;
-import suneido.intfc.database.RecordBuilder;
-import suneido.intfc.database.Transaction;
+import suneido.database.immudb.Record;
+import suneido.database.immudb.RecordBuilder;
+import suneido.database.immudb.Transaction;
 
 /**
  * Base class for query operation classes.
@@ -62,7 +61,7 @@ public abstract class Query {
 	}
 	abstract void select(List<String> index, Record from, Record to);
 	void select(List<String> index, Record key) {
-		RecordBuilder rb = dbpkg.recordBuilder();
+		RecordBuilder rb = new RecordBuilder();
 		Record key_to = rb.addAll(key).addMax().build();
 		select(index, key, key_to);
 	}

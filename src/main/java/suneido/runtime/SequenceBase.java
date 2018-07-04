@@ -87,13 +87,14 @@ public abstract class SequenceBase extends SuContainer {
 
 	}
 
-	protected void ck_instantiate() {
+	protected SuContainer ck_instantiate() {
 		if (instantiated)
-			return;
+			return this;
 		if (infinite())
 			throw new SuException("can't instantiate infinite sequence");
 		instantiate();
 		instantiated = true;
+		return this;
 	}
 
 	@Override
@@ -130,6 +131,18 @@ public abstract class SequenceBase extends SuContainer {
 	public Object get(Object key) {
 		ck_instantiate();
 		return super.get(key);
+	}
+
+	@Override
+	public Object rangeTo(int i, int j) {
+		ck_instantiate();
+		return super.rangeTo(i, j);
+	}
+
+	@Override
+	public Object rangeLen(int i, int n) {
+		ck_instantiate();
+		return super.rangeLen(i, n);
 	}
 
 	@Override

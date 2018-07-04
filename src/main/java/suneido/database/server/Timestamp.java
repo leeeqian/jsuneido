@@ -4,15 +4,13 @@
 
 package suneido.database.server;
 
-import javax.annotation.concurrent.GuardedBy;
-import javax.annotation.concurrent.ThreadSafe;
+import suneido.util.ThreadSafe;
 
 import suneido.SuDate;
 
 @ThreadSafe
 public class Timestamp {
 
-	@GuardedBy("this")
 	private static SuDate prev = SuDate.now();
 
 	public static synchronized SuDate next() {

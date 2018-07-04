@@ -5,18 +5,18 @@
 package suneido.database.query;
 
 import static org.junit.Assert.assertEquals;
-import static suneido.Suneido.dbpkg;
 
 import org.junit.Test;
 
-import suneido.intfc.database.Record;
+import suneido.database.immudb.Record;
+import suneido.database.immudb.RecordBuilder;
 
 public class KeyrangeTest {
 	@Test
 	public void intersect() {
-		Record a = dbpkg.recordBuilder().add("a").build();
-		Record b = dbpkg.recordBuilder().add("b").build();
-		Record c = dbpkg.recordBuilder().add("c").build();
+		Record a = new RecordBuilder().add("a").build();
+		Record b = new RecordBuilder().add("b").build();
+		Record c = new RecordBuilder().add("c").build();
 
 		Keyrange x = new Keyrange(a, b);
 		Keyrange all = new Keyrange();

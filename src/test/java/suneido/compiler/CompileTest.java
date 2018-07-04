@@ -153,6 +153,8 @@ public class CompileTest {
 				"&a, const0, DUP_X2, AASTORE, ARETURN");
 		test("; { ; a ; } ;",
 				"a, POP");
+		test("a[b .. c]",
+				"a, b, c, rangeTo, ARETURN");
 	}
 
 	@Test
@@ -661,6 +663,37 @@ public class CompileTest {
 		if (i == -1)
 			return r;
 		return r.substring(0, i);
+	}
+
+	/**
+	 * PortTests fixture.
+	 * Compiles a string and checks the type and value of the result.
+	 * i.e. string, expected_type, expected_value
+	 */
+	public static boolean pt_compile(String... args) {
+		assert args.length == 3;
+		String s = args[0];
+		String type = args[1];
+		String expected = args[2];
+		boolean ok = true;
+		try {
+			Object x = Compiler.compile("", s);
+			if (!type.equals(Ops.typeName(x)))
+				ok = false;
+			if (!expected.equals(Ops.display(x)))
+				ok = false;
+			if (!ok)
+				System.out.println("\tgot: " +
+						Ops.typeName(x) + ", " + Ops.display(x));
+		} catch (RuntimeException e) {
+			if (!type.equals("Exception"))
+				ok = false;
+			if (!e.getMessage().contains(expected))
+				ok = false;
+			if (!ok)
+				System.out.println("\tgot: " + e);
+		}
+		return ok;
 	}
 
 }

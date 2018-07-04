@@ -8,12 +8,8 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static suneido.runtime.Numbers.INF;
-import static suneido.runtime.Numbers.MC;
-import static suneido.runtime.Numbers.MINUS_INF;
 import static suneido.runtime.Pack.*;
 
-import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
@@ -21,6 +17,7 @@ import org.junit.Test;
 import suneido.SuContainer;
 import suneido.SuDate;
 import suneido.SuRecord;
+import suneido.util.Dnum;
 
 public class PackTest {
 
@@ -29,10 +26,12 @@ public class PackTest {
 		test(false);
 		test(true);
 		test(0);
-		test(BigDecimal.ZERO, 0);
+		test(Dnum.Zero);
+		test(Dnum.Inf);
+		test(Dnum.MinusInf);
+		test(Dnum.One, 1);
 		test(1);
-		test(BigDecimal.ONE, 1);
-		test(new BigDecimal("4.94557377049180"), new BigDecimal("4.945573770491"));
+		test(Dnum.parse("4.945573770491"));
 		test("");
 		test("abc");
 		test(SuDate.now());
@@ -43,9 +42,6 @@ public class PackTest {
 		test(1234);
 		test(12345678);
 		test(1234567890);
-		test(INF);
-		test(MINUS_INF);
-		test(BigDecimal.valueOf(Long.MAX_VALUE, -5).round(MC));
 	}
 
 	private static void test(Object x) {
@@ -66,7 +62,7 @@ public class PackTest {
 	}
 
 	@Test
-	public void pack_number_bug() {
+	public void pack_int_bug() {
 		assertEquals(4, packSizeLong(10000));
 
 		ByteBuffer buf = packLong(10000);
@@ -78,15 +74,15 @@ public class PackTest {
 	}
 
 	@Test
-	public void pack_int_vs_bd() {
+	public void pack_int_vs_dnum() {
 		t(0);
 		t(1);
 		t(10000);
 		t(10001);
 	}
 
-	private static void t(int n) {
-		assertEquals(packLong(n), pack(BigDecimal.valueOf(n)));
+	private static void t(long n) {
+		assertEquals(packLong(n), pack(Dnum.from(n)));
 	}
 
 	@Test
@@ -94,35 +90,46 @@ public class PackTest {
 		assertThat(packSizeLong(1000), equalTo(4));
 		assertThat(packSizeLong(10000), equalTo(4));
 		assertThat(packSizeLong(10001), equalTo(6));
-		assertThat(packSizeLong(9999999999999999L), equalTo(10));
-		assertThat(packSizeLong(Long.MAX_VALUE), equalTo(10));
-		assertThat(packSize(BigDecimal.valueOf(Long.MAX_VALUE)), equalTo(10));
+		assertThat(packSizeLong(Integer.MAX_VALUE), equalTo(8));
+		assertThat(packSize(Dnum.from(Integer.MAX_VALUE)), equalTo(8));
 	}
 
 	@Test
-	public void big_decimal() {
-		assertThat(BigDecimal.valueOf(1200, 0).precision(), equalTo(4));
-
-		BigDecimal n = BigDecimal.valueOf(12345678);
-		assert n != n.stripTrailingZeros();
+	public void pack_dnum() {
+		String[] data = { "-123e-64", "0", "123", "-123", "inf", "-inf", ".001",
+				"1234567890123456", "-123e-99", "456e99" };
+		for (String s : data) {
+			Dnum dn = Dnum.parse(s);
+			ByteBuffer bufdn = Pack.pack(dn);
+			Object x = Pack.unpack(bufdn);
+			if (x instanceof Dnum)
+				assertThat((Dnum) x, equalTo(dn));
+			else {
+				long i = ((Number) x).longValue();
+				assertThat(i, equalTo(Long.parseLong(s)));
+			}
+		}
 	}
 
 	@Test
-	public void inf() {
-		assertThat(packSize(INF), equalTo(2));
-		ByteBuffer buf = pack(INF);
-		assertThat(buf.capacity(), equalTo(2));
-		assertThat(buf.get(0) & 0xff, equalTo(3));
-		assertThat(buf.get(1) & 0xff, equalTo(255));
+	public void unpacklong() {
+		upl(0);
+		upl(123);
+		upl(-123);
+		upl(1230000);
+		upl(-1230000);
+		upl(2000000000);
+		upl(-2000000000);
+		upl(9999_9999_9999_9999L);
+		upl(-9999_9999_9999_9999L);
+		upl(9999_0000_0000_0000L);
+		upl(-9999_0000_0000_0000L);
 	}
 
-	@Test
-	public void minus_inf() {
-		assertThat(packSize(MINUS_INF), equalTo(2));
-		ByteBuffer buf = pack(MINUS_INF);
-		assertThat(buf.capacity(), equalTo(2));
-		assertThat(buf.get(0) & 0xff, equalTo(2));
-		assertThat(buf.get(1) & 0xff, equalTo(0));
+	void upl(long n) {
+		ByteBuffer buf = Pack.packLong(n);
+		assertThat(buf, equalTo(Pack.pack(Dnum.from(n))));
+		assertThat(Pack.unpackLong(buf), equalTo(n));
 	}
 
 }

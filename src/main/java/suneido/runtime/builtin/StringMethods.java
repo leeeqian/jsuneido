@@ -94,20 +94,10 @@ public class StringMethods extends BuiltinMethods {
 		return n;
 	}
 
-	@Params("string")
-	public static Object HasQ(Object self, Object a) {
-		return (toStr(self)).contains(toStr(a));
-	}
-
 	private static final int TABWIDTH = 4;
 
 	public static Object Detab(Object self) {
 		return Tabs.detab(toStr(self), TABWIDTH);
-	}
-
-	@Params("string")
-	public static Object SuffixQ(Object self, Object a) {
-		return toStr(self).endsWith(toStr(a));
 	}
 
 	public static Object Entab(Object self) {
@@ -151,66 +141,91 @@ public class StringMethods extends BuiltinMethods {
 		return result.group(s, part_i);
 	}
 
-	@Params("s, i = 0")
+	@Params("s, pos = 0")
 	public static Object Find(Object self, Object a, Object b) {
 		String s = toStr(self);
-		int i = s.indexOf(toStr(a), toInt(b));
+		int pos = toInt(b);
+		int i = s.indexOf(toStr(a), pos);
 		return i == -1 ? s.length() : i;
 	}
 
-	@Params("s, i = false")
+	@Params("s, pos = false")
 	public static Object FindLast(Object self, Object a, Object b) {
-		int pos = (b == Boolean.FALSE) ? Integer.MAX_VALUE : toInt(b);
-		int i = toStr(self).lastIndexOf(toStr(a), pos);
+		String s = toStr(self);
+		String sub = toStr(a);
+		int pos = (b == Boolean.FALSE) ? s.length() : toInt(b);
+		int i = s.lastIndexOf(sub, pos);
 		return i == -1 ? Boolean.FALSE : i;
 	}
 
-	@Params("string")
-	public static Object Find1of(Object self, Object a) {
+	@Params("string, pos = 0")
+	public static Object Find1of(Object self, Object a, Object b) {
 		String s = toStr(self);
 		String set = Ops.toStr(a);
-		for (int i = 0; i < s.length(); ++i) {
-			int j = set.indexOf(s.charAt(i));
-			if (j != -1)
+		int pos = toInt(b);
+		for (int i = Math.max(0, pos); i < s.length(); ++i) {
+			if (-1 != set.indexOf(s.charAt(i)))
 				return i;
 		}
 		return s.length();
 	}
 
-	@Params("string")
-	public static Object Findnot1of(Object self, Object a) {
+	@Params("string, pos = 0")
+	public static Object Findnot1of(Object self, Object a, Object b) {
 		String s = toStr(self);
 		String set = Ops.toStr(a);
-		for (int i = 0; i < s.length(); ++i) {
-			int j = set.indexOf(s.charAt(i));
-			if (j == -1)
+		int pos = toInt(b);
+		for (int i = Math.max(0, pos); i < s.length(); ++i) {
+			if (-1 == set.indexOf(s.charAt(i)))
 				return i;
 		}
 		return s.length();
 	}
 
-	@Params("string")
-	public static Object FindLast1of(Object self, Object a) {
+	@Params("string, pos = false")
+	public static Object FindLast1of(Object self, Object a, Object b) {
 		String s = toStr(self);
 		String set = Ops.toStr(a);
-		for (int i = s.length() - 1; i >= 0; --i) {
-			int j = set.indexOf(s.charAt(i));
-			if (j != -1)
+		int pos = (b == Boolean.FALSE)
+				? s.length() - 1
+				: Math.min(toInt(b), s.length() - 1);
+		for (int i = pos; i >= 0; --i) {
+			if (-1 != set.indexOf(s.charAt(i)))
 				return i;
 		}
 		return Boolean.FALSE;
 	}
 
-	@Params("string")
-	public static Object FindLastnot1of(Object self, Object a) {
+	@Params("string, pos = false")
+	public static Object FindLastnot1of(Object self, Object a, Object b) {
 		String s = toStr(self);
 		String set = Ops.toStr(a);
-		for (int i = s.length() - 1; i >= 0; --i) {
-			int j = set.indexOf(s.charAt(i));
-			if (j == -1)
+		int pos = (b == Boolean.FALSE)
+				? s.length() - 1
+				: Math.min(toInt(b), s.length() - 1);
+		for (int i = pos; i >= 0; --i) {
+			if (-1 == set.indexOf(s.charAt(i)))
 				return i;
 		}
 		return Boolean.FALSE;
+	}
+
+	static final Charset Windows1252 = Charset.forName("windows-1252");
+
+	public static Object FromUtf8(Object self) {
+		CharBuffer cb = Charsets.UTF_8.decode(
+				ByteBuffer.wrap(Util.stringToBytes(toStr(self))));
+		return Util.bytesToString(Windows1252.encode(cb));
+	}
+
+	@Params("string")
+	public static Object HasQ(Object self, Object a) {
+		return (toStr(self)).contains(toStr(a));
+	}
+
+	/** null method on jSuneido, implemented on cSuneido */
+	public static Object Instantiate(Object self) {
+		return self;
 	}
 
 	public static Object Iter(Object self) {
@@ -373,6 +388,17 @@ public class StringMethods extends BuiltinMethods {
 		return Compiler.parse(toStr(self)).toString();
 	}
 
+	@Params("s, i = 0")
+	public static Object PrefixQ(Object self, Object a, Object b) {
+		String s = toStr(self);
+		int len = s.length();
+		int i = toInt(b);
+		if (i < 0)
+			i += len;
+		i = max(0, min(i, len));
+		return s.startsWith(toStr(a), i);
+	}
+
 	@Params("n")
 	public static Object Repeat(Object self, Object a) {
 		return Strings.repeat(toStr(self), Math.max(0, toInt(a)));
@@ -386,7 +412,7 @@ public class StringMethods extends BuiltinMethods {
 		return replace(s, pat, b, n);
 	}
 
-	public static String replace(String s, String p, Object r, int n) {
+	static String replace(String s, String p, Object r, int n) {
 		if (n <= 0)
 			return s;
 		Regex.Pattern pat = RegexCache.getPattern(p);
@@ -431,6 +457,10 @@ public class StringMethods extends BuiltinMethods {
 		}
 	}
 
+	public static Object Reverse(Object self) {
+		return new StringBuilder(toStr(self)).reverse().toString();
+	}
+
 	public static Object ServerEval(Object self) {
 		return TheDbms.dbms().run(toStr(self));
 	}
@@ -459,17 +489,6 @@ public class StringMethods extends BuiltinMethods {
 		return ob;
 	}
 
-	@Params("s, i = 0")
-	public static Object PrefixQ(Object self, Object a, Object b) {
-		String s = toStr(self);
-		int len = s.length();
-		int i = toInt(b);
-		if (i < 0)
-			i += len;
-		i = max(0, min(i, len));
-		return s.startsWith(toStr(a), i);
-	}
-
 	@Params("i, n = INTMAX")
 	public static Object Substr(Object self, Object a, Object b) {
 		CharSequence s = toSeq(self);
@@ -485,18 +504,15 @@ public class StringMethods extends BuiltinMethods {
 		return s.subSequence(i, i + n);
 	}
 
-	private static final Charset Windows1252 = Charset.forName("windows-1252");
+	@Params("string")
+	public static Object SuffixQ(Object self, Object a) {
+		return toStr(self).endsWith(toStr(a));
+	}
 
 	public static Object ToUtf8(Object self) {
 		CharBuffer cb = Windows1252.decode(
 				ByteBuffer.wrap(Util.stringToBytes(toStr(self))));
 		return Util.bytesToString(Charsets.UTF_8.encode(cb));
-	}
-
-	public static Object FromUtf8(Object self) {
-		CharBuffer cb = Charsets.UTF_8.decode(
-				ByteBuffer.wrap(Util.stringToBytes(toStr(self))));
-		return Util.bytesToString(Windows1252.encode(cb));
 	}
 
 	@Params("from, to = ''")

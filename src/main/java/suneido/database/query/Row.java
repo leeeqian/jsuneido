@@ -5,7 +5,6 @@
 package suneido.database.query;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static suneido.Suneido.dbpkg;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -16,10 +15,11 @@ import java.util.NoSuchElementException;
 import com.google.common.base.MoreObjects;
 
 import suneido.SuRecord;
+import suneido.database.immudb.Dbpkg;
+import suneido.database.immudb.Record;
+import suneido.database.immudb.RecordBuilder;
+import suneido.database.immudb.Transaction;
 import suneido.database.server.DbmsTran;
-import suneido.intfc.database.Record;
-import suneido.intfc.database.RecordBuilder;
-import suneido.intfc.database.Transaction;
 import suneido.runtime.Pack;
 import suneido.util.Util;
 
@@ -38,7 +38,7 @@ public class Row {
 
 	public Row(int n) {
 		this(new Record[n]);
-		Arrays.fill(data, dbpkg.minRecord());
+		Arrays.fill(data, Dbpkg.MIN_RECORD);
 	}
 
 	// used by Project & Extend
@@ -89,7 +89,7 @@ public class Row {
 	}
 
 	public Record project(Header hdr, List<String> flds) {
-		RecordBuilder key = dbpkg.recordBuilder();
+		RecordBuilder key = new RecordBuilder();
 		for (String f : flds)
 			key.add(getrawval(hdr, f));
 		return key.build();
@@ -97,7 +97,7 @@ public class Row {
 
 	/** used by TempIndex */
 	Record project(Header hdr, List<String> flds, int adr) {
-		RecordBuilder key = dbpkg.recordBuilder();
+		RecordBuilder key = new RecordBuilder();
 		for (String f : flds)
 			key.add(getrawval(hdr, f));
 		key.add(adr);
@@ -145,7 +145,7 @@ public class Row {
 		Which w = find(hdr, col);
 		if (w != null || ! hdr.cols.contains(col))
 			return Pack.unpack(getraw(w));
-		if (suneido.intfc.database.Table.isSpecialField(col)) {
+		if (suneido.database.immudb.Table.isSpecialField(col)) {
 			String base = Util.beforeLast(col, "_");
 			w = find(hdr, base);
 			return (w == null) ? ""

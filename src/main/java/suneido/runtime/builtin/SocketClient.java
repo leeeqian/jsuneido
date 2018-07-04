@@ -156,14 +156,13 @@ public class SocketClient extends SuValue {
 
 	// need because SocketServer shares these methods
 	private static SocketClient socketClient(Object self) {
-		return self instanceof SocketServer.Instance
+		SocketClient sc = self instanceof SocketServer.Instance
 				? ((SocketServer.Instance) self).socket
 				: (SocketClient) self;
-	}
-
-	@Override
-	protected void finalize() throws Throwable {
-		close();
+		if (sc.socket.isClosed() || ! sc.socket.isConnected() ||
+				sc.socket.isInputShutdown() || sc.socket.isOutputShutdown())
+			throw new SuException("socket closed or disconnected");
+		return sc;
 	}
 
 	private static final FunctionSpec newFS = new FunctionSpec(array("address",

@@ -6,6 +6,7 @@ package suneido.compiler;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static suneido.compiler.Compiler.compile;
 import static suneido.compiler.Compiler.eval;
 import static suneido.util.testing.Throwing.assertThrew;
 
@@ -18,7 +19,6 @@ import suneido.SuException;
 import suneido.Suneido;
 import suneido.runtime.BlockReturnException;
 import suneido.runtime.Ops;
-import suneido.runtime.Range;
 import suneido.runtime.SuBoundMethod;
 import suneido.runtime.builtin.ContainerMethods;
 import suneido.runtime.builtin.StringMethods;
@@ -390,7 +390,7 @@ public class ExecuteTest {
 			String expected = "**notfalse**";
 			if (args.length > 1)
 				expected = args[1];
-			String result;
+			Object result;
 			boolean ok;
 			if (expected.equals("throws")) {
 				expected = "throws: " + args[2];
@@ -399,21 +399,18 @@ public class ExecuteTest {
 					ok = false;
 				} catch (RuntimeException e) {
 					result = e.getMessage();
-					ok = result.contains(args[2]);
+					ok = e.getMessage().contains(args[2]);
 				}
 			} else if (expected.equals("**notfalse**")) {
-				Object resultOb = eval(args[0]);
-				result = Ops.display(resultOb);
-				ok = resultOb != Boolean.FALSE;
+				result = eval(args[0]);
+				ok = result != Boolean.FALSE;
 			} else {
-				Object resultOb = eval(args[0]);
-				Object expectedOb = eval(expected);
-				result = Ops.display(resultOb);
-				expected = Ops.display(expectedOb);
-				ok = result.equals(expected);
+				result = eval(args[0]);
+			 	Object expectedOb = compile("", expected);
+				ok = Ops.is(result, expectedOb);
 			}
 			if (! ok) {
-				System.out.println("got: " + result);
+				System.out.println("got: " + Ops.display(result));
 				System.out.println("expected: " + expected);
 			}
 			return ok;
@@ -431,12 +428,11 @@ public class ExecuteTest {
 		int from = Integer.parseInt(args[1]);
 		int to = Integer.parseInt(args[2]);
 		String expected = args[3];
-		Range r = new Range.RangeTo(from, to);
-		if (!r.substr(s).equals(expected))
+		if (!Ops.rangeTo(s, from, to).equals(expected))
 			return false;
 		SuContainer list = stringToCharList(s);
 		SuContainer expectedList = stringToCharList(expected);
-		return r.sublist(list).equals(expectedList);
+		return Ops.rangeTo(list, from, to).equals(expectedList);
 	}
 
 	/**
@@ -451,15 +447,14 @@ public class ExecuteTest {
 
 		if (!StringMethods.Substr(s, i, n).equals(expected))
 			return false;
-		Range r = new Range.RangeLen(i, n);
-		if (!r.substr(s).equals(expected))
+		if (!Ops.rangeLen(s, i, n).equals(expected))
 			return false;
 
 		SuContainer list = stringToCharList(s);
 		SuContainer expectedList = stringToCharList(expected);
 		if (!ContainerMethods.Slice(list, i, n).equals(expectedList))
 			return false;
-		return r.sublist(list).equals(expectedList);
+		return Ops.rangeLen(list, i, n).equals(expectedList);
 	}
 
 	private static SuContainer stringToCharList(String s) {
@@ -468,6 +463,29 @@ public class ExecuteTest {
 		for (char c : ca)
 			list.add(String.valueOf(c));
 		return list;
+	}
+
+	/**
+	 * PortTests fixture.
+	 * Calls a method on a literal with specified arguments.
+	 * i.e. object, MethodName, arg ..., expected
+	 */
+	public static boolean pt_method(boolean[] str, String... args) {
+		Object ob = toValue(str, args, 0);
+		String method = args[1];
+		Object expected = toValue(str, args, args.length - 1);
+		Object[] argvals = new Object[args.length - 3];
+		for (int i = 0; i < argvals.length; ++i)
+			argvals[i] = toValue(str, args, 2 + i);
+		Object result = Ops.invoke(ob, method, argvals);
+		boolean ok = Ops.is_(result, expected);
+		if (!ok)
+			System.out.println("\tgot: " + Ops.display(result));
+		return ok;
+	}
+
+	public static Object toValue(boolean[] str, String[] args, int i) {
+		return str[i] ? args[i] : compile("", args[i]);
 	}
 
 }

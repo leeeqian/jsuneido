@@ -84,7 +84,10 @@ public class AstCompile {
 		case NUMBER:
 			return Numbers.stringToNumber(ast.value);
 		case DATE:
-			return SuDate.fromLiteral(ast.value);
+			SuDate date = SuDate.fromLiteral(ast.value);
+			if (date == null)
+				throw new SuException("bad date literal");
+			return date;
 		case OBJECT:
 		case RECORD:
 			return foldObject(ast);
@@ -742,8 +745,21 @@ public class AstCompile {
 			break;
 		case SUBSCRIPT:
 			expression(cg, ast.first());
-			expression(cg, ast.second());
-			cg.memberLoad();
+			AstNode r = ast.second();
+			switch (r.token) {
+			case RANGETO:
+			case RANGELEN:
+				expression(cg, r.first());
+				expression(cg, r.second());
+				if (r.token == Token.RANGETO)
+					cg.rangeTo();
+				else
+					cg.rangeLen();
+				break;
+			default:
+				expression(cg, ast.second());
+				cg.memberLoad();
+			}
 			break;
 		case SUB:
 			expression(cg, ast.first());
@@ -833,15 +849,6 @@ public class AstCompile {
 			break;
 		case RVALUE:
 			return expression(cg, ast.first(), option);
-		case RANGETO:
-		case RANGELEN:
-			expression(cg, ast.first());
-			expression(cg, ast.second());
-			if (ast.token == Token.RANGETO)
-				cg.rangeTo();
-			else
-				cg.rangeLen();
-			break;
 		case IN:
 			inExpression(cg, ast, option == ExprOption.INTBOOL);
 			if (option == ExprOption.INTBOOL)

@@ -1,8 +1,9 @@
 # Need to supply input jSuneido raw JAR as -injars on command line
 # Need to supply output jSuneido finished JAR as -outjars on the command line
--injars lib/asm-all-5.0.4.jar (!META-INF/MANIFEST.MF)
+-injars lib/asm-all-5.2.jar (!META-INF/MANIFEST.MF)
 -injars lib/jsr305-1.3.9.jar (!META-INF/MANIFEST.MF)
--injars lib/guava-22.0.jar (!META-INF/MANIFEST.MF)
+-injars lib/guava-24.0-jre.jar (!META-INF/MANIFEST.MF)
+-injars lib/checker-compat-qual-2.3.1.jar (!META-INF/MANIFEST.MF)
 -injars lib/trove-3.0.3.jar (!META-INF/MANIFEST.MF)
 -libraryjars lib/lucene-core-4.10.3.jar
 -libraryjars lib/lucene-analyzers-common-4.10.3.jar
@@ -20,10 +21,9 @@
     public static java.lang.Throwable exception(java.lang.Object);
 }
 
--keep class suneido.immudb.BtreeKey
+-keep class suneido.database.immudb.BtreeKey
 -keep class suneido.compiler.ParseFunction$Context
-
--keep class org.objectweb.asm.MethodVisitor
+-keep class suneido.database.immudb.Dbpkg$Observer
 
 -dontnote com.google.common.**
 

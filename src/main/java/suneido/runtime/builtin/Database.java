@@ -8,6 +8,7 @@ import suneido.SuContainer;
 import suneido.SuException;
 import suneido.TheDbms;
 import suneido.runtime.*;
+import suneido.util.Dnum;
 import suneido.util.Util;
 
 public class Database extends BuiltinClass {
@@ -29,7 +30,7 @@ public class Database extends BuiltinClass {
 		args = Args.massage(requestFS, args);
 		String request = Ops.toStr(args[0]);
 		TheDbms.dbms().admin(request);
-		return Boolean.TRUE;
+		return null;
 	}
 
 	public static Object Connections(Object self) {
@@ -37,7 +38,7 @@ public class Database extends BuiltinClass {
 	}
 
 	public static Object CurrentSize(Object self) {
-		return TheDbms.dbms().size();
+		return Dnum.from(TheDbms.dbms().size());
 	}
 
 	public static Object Cursors(Object self) {

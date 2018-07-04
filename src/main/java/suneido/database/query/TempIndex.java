@@ -12,10 +12,10 @@ import static suneido.util.Verify.verify;
 import java.util.List;
 
 import suneido.SuException;
-import suneido.Suneido;
-import suneido.intfc.database.Record;
-import suneido.intfc.database.RecordStore;
-import suneido.intfc.database.Transaction;
+import suneido.database.immudb.Dbpkg;
+import suneido.database.immudb.Record;
+import suneido.database.immudb.RecordStore;
+import suneido.database.immudb.Transaction;
 import suneido.util.ArraysList;
 import suneido.util.IntComparator;
 import suneido.util.IntMergeTree;
@@ -90,7 +90,7 @@ public class TempIndex extends Query1 {
 	}
 
 	private void iterate_setup(Dir dir) {
-		stor = Suneido.dbpkg.recordStore();
+		stor = Dbpkg.recordStore();
 		index.clear();
 		refs.clear();
 		Header srchdr = source.header();
